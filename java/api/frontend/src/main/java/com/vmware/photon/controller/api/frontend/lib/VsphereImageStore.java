@@ -107,17 +107,20 @@ public class VsphereImageStore implements ImageStore {
   public Image createImage(String imageId) throws InternalException {
     logger.info("create image {} on datastore {}", imageId, this.getDatastore());
 
+    /*
     final HostServiceTicket hostServiceTicket = getHostServiceTicket();
     NfcClient nfcClient = getNfcClient(hostServiceTicket);
+    */
     String uploadFolder;
     try {
       CreateImageResponse response = getHostClient().createImage(imageId, this.getDatastore());
       uploadFolder = response.getUpload_folder();
+      uploadFolder = uploadFolder.replace("[] ", "");
     } catch (InterruptedException | RpcException e) {
       logger.error("Failed to call HostClient to create image '{}', due to {}", imageId, e);
       throw new InternalException(e);
     }
-    return new VsphereImageStoreImage(nfcClient, uploadFolder, imageId);
+    return new VsphereImageStoreImage(null, uploadFolder, imageId);
   }
 
   /**
@@ -188,6 +191,8 @@ public class VsphereImageStore implements ImageStore {
   }
 
   private String getImageDataStoreMountPoint(List<HostDatastore> dataStoreList) {
+    //return "Shared VMs";
+    
     checkNotNull(dataStoreList);
 
     String dataStore = null;
@@ -197,9 +202,10 @@ public class VsphereImageStore implements ImageStore {
         break;
       }
     }
-
+    
     checkNotNull(dataStore);
     return dataStore;
+    
   }
 
   @VisibleForTesting
@@ -219,7 +225,7 @@ public class VsphereImageStore implements ImageStore {
    * We should not lookForMgmtHosts where we are creating image from a VM on a particular host
    */
   private void ensureHost() {
-    if (null != this.host && (null == this.hostIp || this.hostIp.equals(this.host.getAddress()))) {
+    /*if (null != this.host && (null == this.hostIp || this.hostIp.equals(this.host.getAddress()))) {
       // if we already have a host and it matches the requested IP we just exit
       // we also exit if we have a host and there is no requested IP
       logger.info(
@@ -233,12 +239,18 @@ public class VsphereImageStore implements ImageStore {
       hostList = this.hostBackend.filterByAddress(this.hostIp, Optional.absent());
     }
 
+    ResourceList<Host> hostList = null;
+    hostList = this.hostBackend.filterByAddress("10.118.100.229", Optional.absent());
+    if ((null == hostList || 0 == hostList.getItems().size()) && this.lookForManagementHostsIfNeeded) {
+      hostList = this.hostBackend.filterByUsage(UsageTag.MGMT, Optional.absent());
+    }*/
+
     // since we can't guarantee that the management plane is running on a ESX host
     // we are selecting any host in READY state
+	ResourceList<Host> hostList = null;
     if ((null == hostList || 0 == hostList.getItems().size()) && this.lookForImageDatstoreHostsIfNeeded) {
       hostList = this.hostBackend.filterByState(HostState.READY, Optional.of(1));
     }
-
     checkState(
         null != hostList && null != hostList.getItems() && hostList.getItems().size() > 0,
         "Could not find any host to upload image.");
@@ -248,6 +260,7 @@ public class VsphereImageStore implements ImageStore {
     logger.info(
         "Using host = [{}] with datastores = [{}] to upload image.",
         this.host.getAddress(), this.host.getDatastores());
+    
   }
 
   /**

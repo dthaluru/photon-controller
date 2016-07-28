@@ -1,7 +1,6 @@
 [Unit]
 Description=Photon Controller Service
-After=syslog.target network.target lwsmd.service
-Requires=lwsmd.service
+After=syslog.target network.target
 
 [Service]
 Type=oneshot

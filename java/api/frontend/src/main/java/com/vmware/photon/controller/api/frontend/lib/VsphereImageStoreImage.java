@@ -26,6 +26,15 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
+
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpException;
+
 
 /**
  * Class representing a data store folder.
@@ -62,11 +71,12 @@ public class VsphereImageStoreImage implements Image {
     try {
       String imagePath = getImageFilePath(fileName);
       logger.info("write to {}", imagePath);
+      /*
       try (NfcFileOutputStream outputStream = nfcClient.putFile(imagePath, fileSize)) {
         for (int i = 0; i < fileSize; i++) {
           outputStream.write(inputStream.read());
         }
-      }
+      }*/
       return fileSize;
     } finally {
       if (inputStream != null) {
@@ -74,6 +84,37 @@ public class VsphereImageStoreImage implements Image {
       }
     }
   }
+
+
+  public void copyDiskSCP(String imagePath, String fileName, InputStream inputStream) throws IOException {
+	  try{
+		  logger.info("InsideCopyDiskSCP ImagePath: {}", imagePath);
+		  logger.info("InsideCopyDiskSCP fileName: {}", fileName);
+		  JSch jsch = new JSch();
+		  Session session = null;
+		  session = jsch.getSession("root","10.118.100.229",22);
+		  session.setPassword("ca$hc0w");
+		  session.setConfig("StrictHostKeyChecking", "no");
+		  session.connect();
+		  ChannelSftp channel = null;
+		  channel = (ChannelSftp)session.openChannel("sftp");
+		  channel.connect();
+		  channel.cd(imagePath);
+		  channel.put(inputStream,fileName);
+		  channel.disconnect();
+		  session.disconnect();
+	  } catch (Exception e) {
+		  logger.error(e.getMessage());
+		  throw new RuntimeException(e);
+	  } finally {
+		  if (inputStream != null) {
+			  inputStream.close();
+		  }
+	  }
+  }
+
+
+
 
   /**
    * Upload disk to remote datastore. If the image name exists in the datastore, it will be overwritten. A typical
@@ -87,8 +128,19 @@ public class VsphereImageStoreImage implements Image {
     }
     int singleExtentSize = VmdkMetadata.getSingleExtentSize(inputStream);
     String imagePath = getImageFilePath(fileName);
+    
     logger.info("write to {}", imagePath);
-    nfcClient.putStreamOptimizedDisk(imagePath, inputStream);
+    logger.info("add logic to copy file in the image path: {}", imagePath);
+    logger.info("filename {}", fileName);
+    //imagePath = imagePath.replace("[] ", "");
+    File file = new File(imagePath);
+    
+    String remoteimagePath= file.getAbsoluteFile().getParent();
+    String remoteFileName = file.getName();
+    logger.info("write to {}", remoteimagePath);
+    logger.info("write to {}", remoteFileName);
+    copyDiskSCP(remoteimagePath,remoteFileName, inputStream);
+    //nfcClient.putStreamOptimizedDisk(imagePath, inputStream);
     return singleExtentSize * 512L; // a sector is 512 bytes
   }
 
@@ -114,6 +166,8 @@ public class VsphereImageStoreImage implements Image {
    * @return
    */
   private String getImageFilePath(String fileName) {
-    return String.format("%s/%s%s", uploadFolder, imageId, fileName);
+	  logger.info("uploadFolder: {}", uploadFolder);
+	  logger.info("imageId: {}", imageId);
+	  return String.format("%s/%s%s", uploadFolder, imageId, fileName);
   }
 }

@@ -24,6 +24,7 @@ dependencies {
   compile(project(':housekeeper'))
   compile(project(':root-scheduler'))
 
+  compile 'com.jcraft:jsch:0.1.53'
   compile "com.google.inject.extensions:guice-assistedinject:${versions.guice}"
   compile "com.google.inject:guice:${versions.guice}"
   compile "com.hubspot.dropwizard:dropwizard-guice:0.8.2.0"
