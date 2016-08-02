@@ -295,6 +295,7 @@ class ImageManager():
             raise ImageNotFoundException("Temp image %s not found" % tmp_dir)
 
         try:
+            """
             with FileBackedLock(image_path, ds_type, retry=300, wait_secs=0.1):  # wait lock for 30 seconds
                 if self._check_image_repair(image_id, datastore):
                     raise DiskAlreadyExistException("Image already exists")
@@ -307,8 +308,9 @@ class ImageManager():
                     for entry in os.listdir(tmp_dir):
                         shutil.move(os.path.join(tmp_dir, entry), os.path.join(image_path, entry))
                 else:
-                    # on VMFS/NFS/etc, rename [datastore]/tmp_image_[uuid] to [datastore]/tmp_image_[image_id]
-                    self._host_client.move_file(tmp_dir, image_path)
+            """
+            # on VMFS/NFS/etc, rename [datastore]/tmp_image_[uuid] to [datastore]/tmp_image_[image_id]
+            self._host_client.move_file(tmp_dir, image_path)
         except:
             self._logger.exception("Move image %s to %s failed" % (image_id, image_path))
             self._host_client.delete_file(tmp_dir)
@@ -410,10 +412,10 @@ class ImageManager():
                     continue
 
                 try:
-                    with FileBackedLock(image_dir, ds.type):
-                        if os.path.exists(image_dir):
-                            self._logger.info("Delete folder %s" % image_dir)
-                            shutil.rmtree(image_dir, ignore_errors=True)
+                    #with FileBackedLock(image_dir, ds.type):
+                    if os.path.exists(image_dir):
+                        self._logger.info("Delete folder %s" % image_dir)
+                        shutil.rmtree(image_dir, ignore_errors=True)
                 except (AcquireLockFailure, InvalidFile):
                     self._logger.info("Already locked: %s, skipping" % image_dir)
                 except:

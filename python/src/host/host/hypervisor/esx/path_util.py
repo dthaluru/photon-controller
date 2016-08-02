@@ -13,7 +13,7 @@ import os
 import re
 
 COMPOND_PATH_SEPARATOR = '_'
-VMFS_VOLUMES = "/vmfs/volumes"
+VMFS_VOLUMES = "/var/lib/vmware"
 
 DISK_FOLDER_NAME_PREFIX = "disk"
 IMAGE_FOLDER_NAME_PREFIX = "image"

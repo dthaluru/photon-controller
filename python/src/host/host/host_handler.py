@@ -123,7 +123,7 @@ from hypervisor.exceptions import OperationNotAllowedException
 from hypervisor.exceptions import VmAlreadyExistException
 from hypervisor.exceptions import VmNotFoundException
 from hypervisor.exceptions import VmPowerStateException
-
+from gen.resource.ttypes import Network, NetworkType
 
 class HypervisorNotConfigured(Exception):
     pass
@@ -204,9 +204,10 @@ class HostHandler(Host.Iface):
 
         if not self._hypervisor:
             raise HypervisorNotConfigured()
-        networks = self._hypervisor.network_manager.get_networks()
-        vm_network_names = self._hypervisor.network_manager.get_vm_networks()
-        config.networks = [network for network in networks if network.id in vm_network_names]
+        network1 = Network("NAT", [NetworkType.VM])
+        network2 = Network("Bridged", [NetworkType.VM])
+        network3 = Network("HostOnly", [NetworkType.VM])
+        config.networks = [network1,network2,network3]
         dm = self._hypervisor.datastore_manager
         config.datastores = dm.get_datastores()
         config.image_datastore_ids = dm.image_datastores()

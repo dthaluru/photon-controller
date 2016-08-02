@@ -521,8 +521,10 @@ class VimClient(HostClient):
 
     @hostd_error_handler
     def get_networks(self):
-        return [network.name for network in
-                self._find_by_inventory_path(NETWORK_FOLDER_NAME).childEntity]
+        listNetworks=[]
+        for network in self._find_by_inventory_path(NETWORK_FOLDER_NAME).childEntity:
+            listNetworks.append(network.name)
+        return listNetworks
 
     @hostd_error_handler
     def create_disk(self, path, size):
