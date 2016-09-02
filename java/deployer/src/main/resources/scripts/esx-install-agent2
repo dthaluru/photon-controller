@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 tools=$(readlink -nf $(dirname $0))
 source $tools/common.sh
 
@@ -80,23 +80,28 @@ function create_and_copy_certificate() {
   priv_key_name="host.privkey"
   pub_key_name="host.pubkey"
   crt_name="host.crt"
+  pem_name="host.pem"
+  jks_name="hostkey.jks"
   priv_key_path="${cert_dir}/${priv_key_name}"
   pub_key_path="${cert_dir}/${pub_key_name}"
   host_crt_path="${cert_dir}/${crt_name}"
+  host_pem_path="${cert_dir}/${pem_name}"
+  host_jks_path="${cert_dir}/${jks_name}"
   esxi_priv_key_path="${host_cert_dir}/${priv_key_name}"
   esxi_pub_key_path="${host_cert_dir}/${pub_key_name}"
   esxi_host_crt_path="${host_cert_dir}/${crt_name}"
+  esxi_host_pem_path="${host_cert_dir}/${pem_name}"
 
-
-  # Delete certificate files if it exists
-  echo "Deleting cert for ${host_address}"
-  sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_host_crt_path}"
-  sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_pub_key_path}"
-  sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_priv_key_path}"
-
-  if [ ! -d "${cert_dir}" ]; then
+  cert_alias=`keytool --list --keystore /keystore.jks -storepass ${lightwave_password} -alias MACHINE_CERT_${host_address}`
+  if [[ "$cert_alias" == *"does not exist"* ]]; then 
+  
     mkdir -p ${cert_dir}
 
+    echo "Deleting cert for ${host_address}"
+    sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_host_crt_path}"
+    sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_host_pem_path}"
+    sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_pub_key_path}"
+    sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} rm -f "${esxi_priv_key_path}"
     #copying the config file to local directory which is going to be used in the cerficate generation.
     config_file_path="${cert_dir}/certool.cfg"
     cp /opt/vmware/share/config/certool.cfg "${config_file_path}"
@@ -117,6 +122,18 @@ function create_and_copy_certificate() {
       certool --gencert --privkey="${priv_key_path}" --cert="${host_crt_path}" \
         --srp-upn administrator@${lightwave_domain} --srp-pwd ${lightwave_password} \
         --server ${lightwave_address} --config "${config_file_path}"
+   
+      cat ${host_crt_path} ${priv_key_path} > ${host_pem_path}
+ 
+      # Generate pkcs12 keystore
+      openssl pkcs12 -export -in ${host_crt_path} -inkey ${priv_key_path} -out hostkeystore.p12 -name MACHINE_CERT_${host_address} \
+        -password pass:${lightwave_password}
+
+      # Convert it into JKS
+      keytool -importkeystore -deststorepass ${lightwave_password} -destkeypass ${lightwave_password} \
+        -destkeystore /keystore.jks -srckeystore hostkeystore.p12 -srcstoretype PKCS12 -srcstorepass ${lightwave_password} \
+        -alias MACHINE_CERT_${host_address}
+      
     fi
 
     # listing /etc/vmware/ssl contents before copying
@@ -124,6 +141,7 @@ function create_and_copy_certificate() {
     sshpass -p "$password"  ssh -o StrictHostKeyChecking=no ${username}@${host_address} ls /etc/vmware/ssl
 
     sshpass -p "$password" scp -o StrictHostKeyChecking=no ${host_crt_path} ${username}@${host_address}:/etc/vmware/ssl
+    sshpass -p "$password" scp -o StrictHostKeyChecking=no ${host_pem_path} ${username}@${host_address}:/etc/vmware/ssl
     sshpass -p "$password" scp -o StrictHostKeyChecking=no ${priv_key_path} ${username}@${host_address}:/etc/vmware/ssl
 
     # listing /etc/vmware/ssl contents after copying
