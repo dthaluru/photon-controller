@@ -22,9 +22,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
-import org.apache.thrift.async.TAsyncClient;
+import org.apache.thrift.async.TAsyncSSLClient;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TNonblockingSSLTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,24 +49,24 @@ import java.util.concurrent.TimeUnit;
  *
  * @param <C> thrift async client type
  */
-public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
+public class BasicClientPool<C extends TAsyncSSLClient> implements ClientPool<C> {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicClientPool.class);
 
   private final SecureRandom random;
-  private final TAsyncClientFactory<C> clientFactory;
+  private final TAsyncSSLClientFactory<C> clientFactory;
   private final TProtocolFactory protocolFactory;
   private final ThriftFactory thriftFactory;
   private final ScheduledExecutorService scheduledExecutor;
   private final ClientPoolOptions options;
   private final InetSocketAddress[] availableServers;
-  private final Map<C, TNonblockingTransport> clientTransportMap;
+  private final Map<C, TNonblockingSSLTransport> clientTransportMap;
   private final Queue<Promise<C>> promises;
   private boolean closed;
 
   @Inject
   public BasicClientPool(SecureRandom random,
-                         TAsyncClientFactory<C> clientFactory,
+                         TAsyncSSLClientFactory<C> clientFactory,
                          TProtocolFactory protocolFactory,
                          ThriftFactory thriftFactory,
                          @ClientPoolTimer ScheduledExecutorService scheduledExecutor,
@@ -116,7 +117,7 @@ public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
       promiseIterator.remove();
     }
 
-    for (TNonblockingTransport transport : clientTransportMap.values()) {
+    for (TNonblockingSSLTransport transport : clientTransportMap.values()) {
       transport.close();
     }
 
@@ -131,7 +132,7 @@ public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
     if (closed) {
       logger.warn("{}, client pool {} is closed already", options.getServiceName(), System.identityHashCode(this));
     } else {
-      TNonblockingTransport transport = clientTransportMap.remove(client);
+      TNonblockingSSLTransport transport = clientTransportMap.remove(client);
       transport.close();
     }
 
@@ -149,7 +150,7 @@ public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
   }
 
   @VisibleForTesting
-  protected Map<C, TNonblockingTransport> getClientTransportMap() {
+  protected Map<C, TNonblockingSSLTransport> getClientTransportMap() {
     return clientTransportMap;
   }
 
@@ -177,7 +178,7 @@ public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
             options.getServiceName(), System.identityHashCode(this), client);
         promises.remove().set(client);
         return;
-      } catch (IOException ex) {
+      } catch (IOException | TTransportException ex) {
         logger.error("createNewClient has IOException", ex);
         promises.remove().setException(ex);
         break;
@@ -202,7 +203,7 @@ public class BasicClientPool<C extends TAsyncClient> implements ClientPool<C> {
     return clientTransportMap.size() < options.getMaxClients() && availableServers.length > 0;
   }
 
-  private C createNewClient() throws IOException {
+  private C createNewClient() throws IOException, TTransportException {
     logger.debug("start createNewClient");
     int randomIndex = random.nextInt(availableServers.length);
     InetSocketAddress address = availableServers[randomIndex];

@@ -47,10 +47,10 @@ public class EndToEndTest {
   private static final long AWAIT_TIMEOUT = TimeUnit.SECONDS.toSeconds(5);
 
   @Inject
-  private ClientProxyFactory<Echoer.AsyncClient> proxyFactory;
+  private ClientProxyFactory<Echoer.AsyncSSLClient> proxyFactory;
 
   @Inject
-  private ClientPoolFactory<Echoer.AsyncClient> poolFactory;
+  private ClientPoolFactory<Echoer.AsyncSSLClient> poolFactory;
 
   @Inject
   private TTransportFactory transportFactory;
@@ -87,18 +87,18 @@ public class EndToEndTest {
     });
 
     InetSocketAddress localPort = new InetSocketAddress(transport.getServerSocket().getLocalPort());
-    ClientPool<Echoer.AsyncClient> pool = poolFactory.create(new StaticServerSet(localPort),
+    ClientPool<Echoer.AsyncSSLClient> pool = poolFactory.create(new StaticServerSet(localPort),
         new ClientPoolOptions().setMaxClients(10).setMaxWaiters(10));
-    ClientProxy<Echoer.AsyncClient> clientProxy = proxyFactory.create(pool);
+    ClientProxy<Echoer.AsyncSSLClient> clientProxy = proxyFactory.create(pool);
 
     final CountDownLatch latch = new CountDownLatch(1);
-    final Echoer.AsyncClient.echo_call[] result = {null};
+    final Echoer.AsyncSSLClient.echo_call[] result = {null};
     final Exception[] error = {null};
 
     Echoer.AsyncIface echoer = clientProxy.get();
-    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncClient.echo_call>() {
+    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncSSLClient.echo_call>() {
       @Override
-      public void onComplete(Echoer.AsyncClient.echo_call response) {
+      public void onComplete(Echoer.AsyncSSLClient.echo_call response) {
         result[0] = response;
         latch.countDown();
       }
@@ -118,18 +118,18 @@ public class EndToEndTest {
 
   @Test
   public void testEndToEndAcquireTimeout() throws TException, InterruptedException {
-    ClientPool<Echoer.AsyncClient> pool = poolFactory.create(new StaticServerSet(),
+    ClientPool<Echoer.AsyncSSLClient> pool = poolFactory.create(new StaticServerSet(),
         new ClientPoolOptions().setMaxClients(10).setMaxWaiters(10).setTimeout(1, TimeUnit.MILLISECONDS));
-    ClientProxy<Echoer.AsyncClient> clientProxy = proxyFactory.create(pool);
+    ClientProxy<Echoer.AsyncSSLClient> clientProxy = proxyFactory.create(pool);
 
     final CountDownLatch latch = new CountDownLatch(1);
-    final Echoer.AsyncClient.echo_call[] result = {null};
+    final Echoer.AsyncSSLClient.echo_call[] result = {null};
     final Exception[] error = {null};
 
     Echoer.AsyncIface echoer = clientProxy.get();
-    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncClient.echo_call>() {
+    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncSSLClient.echo_call>() {
       @Override
-      public void onComplete(Echoer.AsyncClient.echo_call response) {
+      public void onComplete(Echoer.AsyncSSLClient.echo_call response) {
         result[0] = response;
         latch.countDown();
       }
@@ -166,19 +166,19 @@ public class EndToEndTest {
     });
 
     InetSocketAddress localPort = new InetSocketAddress(transport.getServerSocket().getLocalPort());
-    ClientPool<Echoer.AsyncClient> pool = poolFactory.create(new StaticServerSet(localPort),
+    ClientPool<Echoer.AsyncSSLClient> pool = poolFactory.create(new StaticServerSet(localPort),
         new ClientPoolOptions().setMaxClients(10).setMaxWaiters(10));
-    ClientProxy<Echoer.AsyncClient> clientProxy = proxyFactory.create(pool);
+    ClientProxy<Echoer.AsyncSSLClient> clientProxy = proxyFactory.create(pool);
 
     final CountDownLatch latch = new CountDownLatch(1);
-    final Echoer.AsyncClient.echo_call[] result = {null};
+    final Echoer.AsyncSSLClient.echo_call[] result = {null};
     final Exception[] error = {null};
 
-    Echoer.AsyncClient echoer = clientProxy.get();
+    Echoer.AsyncSSLClient echoer = clientProxy.get();
     echoer.setTimeout(5);
-    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncClient.echo_call>() {
+    echoer.echo("Hello", new AsyncMethodCallback<Echoer.AsyncSSLClient.echo_call>() {
       @Override
-      public void onComplete(Echoer.AsyncClient.echo_call response) {
+      public void onComplete(Echoer.AsyncSSLClient.echo_call response) {
         result[0] = response;
         latch.countDown();
       }

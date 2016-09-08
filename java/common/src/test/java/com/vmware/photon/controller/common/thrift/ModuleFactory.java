@@ -30,7 +30,7 @@ public class ModuleFactory implements IModuleFactory {
     return Modules.combine(
         new ThriftModule(),
         new ThriftServiceModule<>(
-            new TypeLiteral<Echoer.AsyncClient>() {
+            new TypeLiteral<Echoer.AsyncSSLClient>() {
             }
         ),
         new TracingTestModule());

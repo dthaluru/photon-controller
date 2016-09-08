@@ -21,12 +21,13 @@ import com.vmware.photon.controller.status.gen.Status;
 import com.vmware.photon.controller.status.gen.StatusType;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.thrift.async.TAsyncClient;
-import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.async.TAsyncSSLClient;
+import org.apache.thrift.async.TAsyncSSLClientManager;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TNonBlockingSSLSocket;
+import org.apache.thrift.transport.TNonblockingSSLTransport;
+import org.apache.thrift.transport.TSSLTransportFactory.TSSLTransportParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,7 @@ public class ThriftBasedHealthChecker implements HealthChecker {
     throw new RuntimeException(String.format("%s does not support thrift health check", containerType));
   }
 
-  private <X, C extends TAsyncClient> X getThriftClient(
+  private <X, C extends TAsyncSSLClient> X getThriftClient(
       Class<X> clientClass,
       final Class<C> asyncClass,
       final String serviceName) {
@@ -72,14 +73,17 @@ public class ThriftBasedHealthChecker implements HealthChecker {
       Constructor asyncClassCtor = asyncClass.getConstructor(
           new Class[]{
               TProtocolFactory.class,
-              TAsyncClientManager.class,
-              TNonblockingTransport.class});
-
+              TAsyncSSLClientManager.class,
+              TNonblockingSSLTransport.class});
+      TSSLTransportParameters params = new TSSLTransportParameters();
+  	  params.setTrustStore("/keystore.jks", "L1ghtWave!");
+  	  TNonBlockingSSLSocket socket =  TNonBlockingSSLSocket.getClientSocket(ipAddress, port, 0, params);
+      
       final C asyncClient = (C) asyncClassCtor.newInstance(
           new Object[]{
               new MultiplexedProtocolFactory(new TCompactProtocol.Factory(), serviceName),
-              new TAsyncClientManager(),
-              new TNonblockingSocket(ipAddress, port)
+              new TAsyncSSLClientManager(),
+              socket
           });
 
       final ClientProxy<C> clientProxy = new ClientProxy<C>() {

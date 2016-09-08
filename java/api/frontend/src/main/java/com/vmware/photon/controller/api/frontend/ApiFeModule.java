@@ -237,7 +237,7 @@ public class ApiFeModule extends AbstractModule {
         .build(TaskCommandFactory.class));
 
     install(new ThriftModule());
-    install(new ThriftServiceModule<>(new TypeLiteral<Host.AsyncClient>() {
+    install(new ThriftServiceModule<>(new TypeLiteral<Host.AsyncSSLClient>() {
     }));
 
     install(new FactoryModuleBuilder()

@@ -17,7 +17,7 @@ import com.example.echo.Echoer;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TNonBlockingSSLSocket;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -53,7 +53,7 @@ import java.util.concurrent.TimeoutException;
 public class BasicClientPoolTest extends PowerMockTestCase {
 
   @Mock
-  private TAsyncClientFactory<Echoer.AsyncClient> factory;
+  private TAsyncSSLClientFactory<Echoer.AsyncSSLClient> factory;
 
   @Mock
   private ScheduledExecutorService executor;
@@ -64,13 +64,13 @@ public class BasicClientPoolTest extends PowerMockTestCase {
   @Mock
   private ThriftFactory thriftFactory;
 
-  private BasicClientPool<Echoer.AsyncClient> pool;
+  private BasicClientPool<Echoer.AsyncSSLClient> pool;
 
   private Field socketAddressField;
 
   @BeforeMethod
   public void setUp() throws Throwable {
-    socketAddressField = org.apache.thrift.transport.TNonblockingSocket.class.getDeclaredField("socketAddress_");
+    socketAddressField = org.apache.thrift.transport.TNonBlockingSSLSocket.class.getDeclaredField("socketAddress_");
     socketAddressField.setAccessible(true);
   }
 
@@ -104,13 +104,13 @@ public class BasicClientPoolTest extends PowerMockTestCase {
       servers.add(InetSocketAddress.createUnresolved("/127.0.0.1", 80 + i));
     }
 
-    List<Echoer.AsyncClient> clients = new ArrayList<>();
-    List<Echoer.AsyncClient> acquiredClients = new ArrayList<>();
+    List<Echoer.AsyncSSLClient> clients = new ArrayList<>();
+    List<Echoer.AsyncSSLClient> acquiredClients = new ArrayList<>();
     setupPool(poolMaxClients, poolMaxWaiter, servers, clients, acquiredClients);
 
-    Collections.sort(acquiredClients, new Comparator<Echoer.AsyncClient>() {
+    Collections.sort(acquiredClients, new Comparator<Echoer.AsyncSSLClient>() {
       @Override
-      public int compare(Echoer.AsyncClient c1, Echoer.AsyncClient c2) {
+      public int compare(Echoer.AsyncSSLClient c1, Echoer.AsyncSSLClient c2) {
         return c1.toString().compareTo(c2.toString());
       }
     });
@@ -126,7 +126,7 @@ public class BasicClientPoolTest extends PowerMockTestCase {
     }
 
     assertThat(pool.getPromises().size(), is(1)); // extra promise that failed with TimeoutException
-    for (Echoer.AsyncClient acquiredClient : acquiredClients) {
+    for (Echoer.AsyncSSLClient acquiredClient : acquiredClients) {
       pool.release(acquiredClient, true);
     }
 
@@ -138,8 +138,8 @@ public class BasicClientPoolTest extends PowerMockTestCase {
       int poolMaxClients,
       int poolMaxWaiter,
       Set<InetSocketAddress> servers,
-      final List<Echoer.AsyncClient> clients,
-      List<Echoer.AsyncClient> acquiredClients)
+      final List<Echoer.AsyncSSLClient> clients,
+      List<Echoer.AsyncSSLClient> acquiredClients)
       throws ClientPoolException {
     final Set<InetSocketAddress> usedServers = new HashSet<>();
     doAnswer(new Answer<Object>() {
@@ -147,13 +147,13 @@ public class BasicClientPoolTest extends PowerMockTestCase {
       public Object answer(InvocationOnMock invocation) throws Throwable {
         assertThat(invocation.getArguments().length, is(2));
         Object socket = invocation.getArguments()[1];
-        assertThat(socket.getClass().getName(), is("org.apache.thrift.transport.TNonblockingSocket"));
+        assertThat(socket.getClass().getName(), is("org.apache.thrift.transport.TNonBlockingSSLSocket"));
         usedServers.add((InetSocketAddress) socketAddressField.get(socket));
-        Echoer.AsyncClient client = createClient("client-" + clients.size());
+        Echoer.AsyncSSLClient client = createClient("client-" + clients.size());
         clients.add(client);
         return client;
       }
-    }).when(factory).create(any(TProtocolFactory.class), any(TNonblockingSocket.class));
+    }).when(factory).create(any(TProtocolFactory.class), any(TNonBlockingSSLSocket.class));
 
     ClientPoolOptions options = new ClientPoolOptions().setMaxClients(poolMaxClients).setMaxWaiters(poolMaxWaiter);
 
@@ -167,15 +167,15 @@ public class BasicClientPoolTest extends PowerMockTestCase {
     return usedServers;
   }
 
-  private Echoer.AsyncClient acquireClientFromPool() throws ClientPoolException {
-    ListenableFuture<Echoer.AsyncClient> futureClient = pool.acquire();
-    Echoer.AsyncClient actualClient =
+  private Echoer.AsyncSSLClient acquireClientFromPool() throws ClientPoolException {
+    ListenableFuture<Echoer.AsyncSSLClient> futureClient = pool.acquire();
+    Echoer.AsyncSSLClient actualClient =
         Futures.get(futureClient, 100, TimeUnit.MILLISECONDS, ClientPoolException.class);
     return actualClient;
   }
 
-  private Echoer.AsyncClient createClient(String name) {
-    Echoer.AsyncClient client = mock(Echoer.AsyncClient.class);
+  private Echoer.AsyncSSLClient createClient(String name) {
+    Echoer.AsyncSSLClient client = mock(Echoer.AsyncSSLClient.class);
     when(client.toString()).thenReturn(name);
     return client;
   }
